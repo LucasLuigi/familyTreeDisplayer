@@ -1,0 +1,6 @@
+**__pycache__
+.vscode/*
+node_modules/
+
+# Not my repo git
+gedcom-main/
