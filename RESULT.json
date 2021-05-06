@@ -1,0 +1,62 @@
+{
+    "type": "root",
+    "children": [
+        {
+            "type": "INDI",
+            "data": {
+                "formal_name": "INDIVIDUAL",
+                "xref_id": "@I1@",
+                "NAME": "Papa",
+                "SEX": "M",
+                "BIRTH/DATE": "01 FEB 1960",
+                "BIRTH/PLACE": "Paris, France",
+                "@FAMILY_CHILD": "@F1@",
+                "@FAMILY_SPOUSE": "@F2@"
+            },
+            "children": []
+        },
+        {
+            "type": "INDI",
+            "data": {
+                "formal_name": "INDIVIDUAL",
+                "xref_id": "@I2@",
+                "NAME": "Maman",
+                "SEX": "F",
+                "BIRTH/DATE": "01 FEB 1960",
+                "BIRTH/PLACE": "Paris, France",
+                "@FAMILY_CHILD": "@F3@",
+                "@FAMILY_SPOUSE": "@F2@"
+            },
+            "children": []
+        },
+        {
+            "type": "INDI",
+            "data": {
+                "formal_name": "INDIVIDUAL",
+                "xref_id": "@I3@",
+                "NAME": "Lucas /Luigi/",
+                "SEX": "M",
+                "BIRTH/DATE": "01 JAN 2000",
+                "BIRTH/PLACE": "Paris, France, dont care anyway",
+                "@FAMILY_CHILD": "@F2@"
+            },
+            "children": []
+        },
+        {
+            "type": "INDI",
+            "data": {
+                "formal_name": "INDIVIDUAL",
+                "xref_id": "@I4@",
+                "NAME": "Papy",
+                "SEX": "M",
+                "BIRTH/DATE": "01 JAN 1900",
+                "BIRTH/PLACE": "Paris, France",
+                "DEATH/DATE": "01 JAN 2000",
+                "OCCUPATION": "Cultivateur",
+                "@FAMILY_CHILD": "@F4@",
+                "@FAMILY_SPOUSE": "@F3@"
+            },
+            "children": []
+        }
+    ]
+}

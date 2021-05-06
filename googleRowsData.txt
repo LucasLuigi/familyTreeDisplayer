@@ -1,0 +1,6 @@
+[
+[{ 'v': 'Lucas Luigi', 'f': 'Lucas Luigi<div style="color:green; font-style:italic">Ville, 75000, Paris, IDF, France</div> — <div style="color:red; font-style:italic"></div>' }, '', 'Développeur - Né à Ville, 75000, Paris, IDF, France'],
+[{ 'v': 'Papa', 'f': 'Papa<div style="color:green; font-style:italic">01 FEB 1960</div> — <div style="color:red; font-style:italic"></div>' }, 'Lucas Luigi', 'Né à Paris, France'],
+[{ 'v': 'Maman', 'f': 'Maman<div style="color:green; font-style:italic">01 FEB 1960</div> — <div style="color:red; font-style:italic"></div>' }, 'Lucas Luigi', 'Née à Paris, France'],
+[{ 'v': 'Papy', 'f': 'Papy<div style="color:green; font-style:italic">01 JAN 1900</div> — <div style="color:red; font-style:italic">01 JAN 2000</div>' }, 'Maman', 'Cultivateur - Né à Paris, France'],
+]
