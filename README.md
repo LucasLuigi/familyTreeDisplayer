@@ -8,8 +8,9 @@ Python 3.9+
 ## Installation steps
 
 1. Clone [tmcw/gedcom](https://github.com/tmcw/gedcom)
-2. `npm init`
-3. Add dependencies to gedcom `("gedcom": "^3.0.0")` to use its functions
+2. Install it globally `npm install -g`
+3. In familyTreeDisplayer/ run `npm init`
+4. Add dependencies to tmcw/gedcom `("gedcom": "^3.0.0")` to use its functions
 
 ## Execution step
 
