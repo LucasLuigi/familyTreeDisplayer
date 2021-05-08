@@ -7,7 +7,7 @@ __name__ = 'treeConstants'
 trueRootTreeName = 'Lucas /Luigi/'
 trueRootTreeBirthDate = '01 JAN 2000'
 trueRootTreeOccupation = 'Développeur'
-trueRootTreeBirthDate = 'Ville, 75000, Paris, IDF, France'
+trueRootTreeBirthPlace = 'Ville, 75000, Paris, IDF, France'
 trueRootTreeSex = 'M'
 
 # Parents of the root

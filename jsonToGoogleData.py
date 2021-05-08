@@ -4,9 +4,24 @@ import sys
 import json
 import importlib
 
+# Debug mode
+DEBUG_MODE = False
+birthDatesList = ''
+deathDatesList = ''
+
 
 def buildDataRow(name, birthDate, deathDate, childName, toolTip):
-    # Beginning of line
+    # Debug
+    global DEBUG_MODE
+    global birthDatesList
+    global deathDatesList
+    if DEBUG_MODE:
+        if birthDate != '':
+            birthDatesList = birthDatesList + formatDate(birthDate) + '\n'
+        if deathDate != '':
+            deathDatesList = deathDatesList + formatDate(deathDate) + '\n'
+
+     # Beginning of line
     dataRow = '['
 
     # First attribute: name, composed of attributes v (ID) and f (displayed)
@@ -16,11 +31,11 @@ def buildDataRow(name, birthDate, deathDate, childName, toolTip):
     # f: Displayed (name without ' and / then dates styled with HTML)
     dataRow = dataRow + '\', \'f\': \''
     dataRow = dataRow + name.replace('/', '').replace('\'', '\\\'')
-    dataRow = dataRow + '<div style="color:green; font-style:italic">'
-    dataRow = dataRow + birthDate + '</div>'
+    dataRow = dataRow + '<br><br><div style="color:green; font-style:italic">'
+    dataRow = dataRow + formatDate(birthDate) + '</div>'
     dataRow = dataRow + ' — '
     dataRow = dataRow + '<div style="color:red; font-style:italic">'
-    dataRow = dataRow + deathDate
+    dataRow = dataRow + formatDate(deathDate)
     dataRow = dataRow + '</div>\' }, \''
 
     # Second attribute: child name (without ' and /). Two / delimit the surname
@@ -33,9 +48,8 @@ def buildDataRow(name, birthDate, deathDate, childName, toolTip):
     dataRow = dataRow + '],\n'
     return dataRow
 
+
 # Build toolTip with the separator if needed
-
-
 def buildToolTip(occupation, birthPlace, deathPlace, sex):
     SEPARATOR = ' - '
     if sex == 'F':
@@ -75,6 +89,29 @@ def extractDictAttribute(data, attribute):
         return ''
 
 
+def formatDate(date):
+    # Lowering case
+    formattedDate = str.lower(date)
+
+    # Translating months when it is necessary
+    formattedDate = formattedDate.replace('feb', 'fev')
+    formattedDate = formattedDate.replace('apr', 'avr')
+    formattedDate = formattedDate.replace('may', 'mai')
+    formattedDate = formattedDate.replace('jun', 'jui')
+    formattedDate = formattedDate.replace('aug', 'aou')
+
+    # Replacing about, after, before and between
+    formattedDate = formattedDate.replace('abt ', '~')
+    formattedDate = formattedDate.replace('aft', '>')
+    formattedDate = formattedDate.replace('bef', '<')
+    if formattedDate.find('bet') != -1:
+        formattedDate = formattedDate.replace('bet ', '[')
+        formattedDate = formattedDate.replace('and', '-')
+        formattedDate = formattedDate + ']'
+
+    return formattedDate
+
+
 # [
 # [{ 'v': 'Mike', 'f': 'Mike<div style="color:red; font-style:italic">President</div>' }, '', 'The President'],
 # [{ 'v': 'Jim', 'f': 'Jim<div style="color:red; font-style:italic">Vice President</div>' }, 'Mike', 'VP'],
@@ -84,7 +121,6 @@ if __name__ == '__main__':
     print('- jsonToGoogleData - \n')
 
     # Debug mode
-    DEBUG_MODE = False
     DEBUG_ORPHAN_NODE__NAME = 'DEBUG-ORPHAN'
     DEBUG_ORPHAN_NODE__TOOLTIP = 'Its parents are people which has not found their place in my tree yet'
 
@@ -110,7 +146,7 @@ if __name__ == '__main__':
     trueRootTreeName = treeConstantsModule.trueRootTreeName
     trueRootTreeBirthDate = treeConstantsModule.trueRootTreeBirthDate
     toolTip = buildToolTip(treeConstantsModule.trueRootTreeOccupation,
-                           treeConstantsModule.trueRootTreeBirthDate, '', treeConstantsModule.trueRootTreeSex)
+                           treeConstantsModule.trueRootTreeBirthPlace, '', treeConstantsModule.trueRootTreeSex)
     falseRootTreeName = treeConstantsModule.falseRootTreeName
     parentsOfRootTreeName = treeConstantsModule.parentsOfRootTreeName
 
@@ -236,3 +272,7 @@ if __name__ == '__main__':
     # Report
     print('Finished. '+str(warningCounter) +
           ' warning(s), '+str(solvedWarningCounter)+' solved problem(s), '+str(infoCounter)+' info(s).')
+    # Writing the formatted dates in a file
+    if DEBUG_MODE:
+        with open('./formatted_dates.txt', 'w', encoding='utf-8') as outFile:
+            outFile.write(birthDatesList+deathDatesList)
