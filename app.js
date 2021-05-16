@@ -1,5 +1,22 @@
 var gedcom = require('gedcom')
 
+// Does not work because of returns: to debug
+function readTextFile(file) {
+    var XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
+    var rawFile = new XMLHttpRequest();
+    var gedText;
+    rawFile.open("GET", file, false);
+    rawFile.onreadystatechange = function () {
+        if (rawFile.readyState === 4) {
+            if (rawFile.status === 200 || rawFile.status == 0) {
+                gedText = rawFile.responseText;
+            }
+        }
+    }
+    rawFile.send(null);
+    return gedText;
+}
+
 var ged_me = `0 HEAD
 1 SOUR GeneWeb
 2 VERS 7.0.0
@@ -49,6 +66,9 @@ var ged_me = `0 HEAD
 1 FAMC @F4@
 1 FAMS @F3@
 0 TRLR`
+
+// Does not work yet
+//var ged_me = readTextFile("file:///C:/Users/Admin/Workspace/familyTreeDisplayer/base.ged")
 
 var parseOut = gedcom.parse(ged_me);
 
