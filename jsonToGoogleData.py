@@ -4,13 +4,30 @@ import sys
 import json
 import importlib
 
+from enum import Enum
+
 # Debug mode
+# Choosed in __main__
 DEBUG_MODE = False
 birthDatesList = ''
 deathDatesList = ''
 
 
-def buildDataRow(name, birthDate, deathDate, childName, toolTip):
+# Display mode
+class displayMode(Enum):
+    COMPLETE = 0
+    BIRTHPLACE = 1
+
+
+appliedDisplayMode = displayMode.COMPLETE
+
+# Variabled for the checker
+idNameDict = {}
+childrenDict = {}
+
+
+def buildDataRow(id, name, birthDate, birthPlace, deathDate, childId, toolTip):
+    global childrenDict
     # Debug
     global DEBUG_MODE
     global birthDatesList
@@ -27,25 +44,39 @@ def buildDataRow(name, birthDate, deathDate, childName, toolTip):
     # First attribute: name, composed of attributes v (ID) and f (displayed)
     # v: ID (name without ' and /). Two / delimit the surname
     dataRow = dataRow + '{ \'v\': \''
-    dataRow = dataRow + name.replace('/', '').replace('\'', '\\\'')
-    # f: Displayed (name without ' and / then dates styled with HTML)
+    dataRow = dataRow + id
+    # f: Displayed (name without ' and /. Dates are stylized with HTML)
     dataRow = dataRow + '\', \'f\': \''
-    dataRow = dataRow + name.replace('/', '').replace('\'', '\\\'')
-    dataRow = dataRow + '<br><br><div style="color:green; font-style:italic">'
-    dataRow = dataRow + formatDate(birthDate) + '</div>'
-    dataRow = dataRow + ' — '
-    dataRow = dataRow + '<div style="color:red; font-style:italic">'
-    dataRow = dataRow + formatDate(deathDate)
-    dataRow = dataRow + '</div>\' }, \''
+    if appliedDisplayMode == displayMode.COMPLETE:
+        dataRow = dataRow + name.replace('\'', '\\\'').replace('/', '')
+        dataRow = dataRow + '<br><br><div style="color:green; font-style:italic">'
+        dataRow = dataRow + formatDate(birthDate) + '</div>'
+        dataRow = dataRow + ' — '
+        dataRow = dataRow + '<div style="color:red; font-style:italic">'
+        dataRow = dataRow + formatDate(deathDate)
+        dataRow = dataRow + '</div>'
+    elif appliedDisplayMode == displayMode.BIRTHPLACE:
+        if birthPlace == '':
+            birthPlace = '?'
+        # FIXME Does not work very well - split not used
+        birthCity = birthPlace.split(', ')[0]
+        dataRow = dataRow + birthPlace.replace('\'', '\\\'')
+    dataRow = dataRow + '\' }, \''
 
     # Second attribute: child name (without ' and /). Two / delimit the surname
-    dataRow = dataRow + childName.replace('/', '').replace('\'', '\\\'')
+    dataRow = dataRow + childId.replace('\'', '\\\'').replace('/', '')
 
     # Third attribute: tool tip
     dataRow = dataRow + '\', \'' + toolTip + '\''
 
     # End of line
     dataRow = dataRow + '],\n'
+
+    # Checker variables assignation
+    if childId not in childrenDict:
+        childrenDict[childId] = 1
+    else:
+        childrenDict[childId] = childrenDict[childId] + 1
     return dataRow
 
 
@@ -82,7 +113,7 @@ def buildToolTip(occupation, birthPlace, deathPlace, sex):
 
 
 # Safe: return empty string if the attribute is not present
-def extractDictAttribute(data, attribute):
+def extractSecureDictAttribute(data, attribute):
     if attribute in data:
         return data[attribute]
     else:
@@ -112,6 +143,20 @@ def formatDate(date):
     return formattedDate
 
 
+def checker(jsonDict):
+    global childrenDict
+    global idNameDict
+    output = True
+
+    for childId in childrenDict:
+        if childrenDict[childId] > 2:
+            # One person is the child of more than two people ; biologically impossible
+            print('CHECKER ERROR: '+idNameDict[childId].replace('/', '')+' has ' +
+                  str(childrenDict[childId])+' parents.')
+    print('')
+    return output
+
+
 # [
 # [{ 'v': 'Mike', 'f': 'Mike<div style="color:red; font-style:italic">President</div>' }, '', 'The President'],
 # [{ 'v': 'Jim', 'f': 'Jim<div style="color:red; font-style:italic">Vice President</div>' }, 'Mike', 'VP'],
@@ -122,6 +167,7 @@ if __name__ == '__main__':
 
     # Debug mode
     DEBUG_ORPHAN_NODE__NAME = 'DEBUG-ORPHAN'
+    DEBUG_ORPHAN_NODE__ID = '@IDEBUG@'
     DEBUG_ORPHAN_NODE__TOOLTIP = 'Its parents are people which has not found their place in my tree yet'
 
     # Paths
@@ -144,9 +190,6 @@ if __name__ == '__main__':
     treeConstantsModule = importlib.import_module('treeConstants')
 
     trueRootTreeName = treeConstantsModule.trueRootTreeName
-    trueRootTreeBirthDate = treeConstantsModule.trueRootTreeBirthDate
-    toolTip = buildToolTip(treeConstantsModule.trueRootTreeOccupation,
-                           treeConstantsModule.trueRootTreeBirthPlace, '', treeConstantsModule.trueRootTreeSex)
     falseRootTreeName = treeConstantsModule.falseRootTreeName
     parentsOfRootTreeName = treeConstantsModule.parentsOfRootTreeName
 
@@ -155,42 +198,83 @@ if __name__ == '__main__':
     # Cause: I added children to the sibling of one of my ancestors
     forbiddenChildNames = treeConstantsModule.forbiddenChildNames
 
+    forbiddenChildNumber = len(forbiddenChildNames)
+    forbiddenChildIds = [''] * forbiddenChildNumber
+
     # Begininning of the rows list
     dataRows = '[\n'
 
+    flagRootFound = False
+    flagCounterforbiddenChildFound = forbiddenChildNumber
+
+    # Extracting misc. informations
+    for person in jsonDict['children']:
+        # Building a (id, name) dict
+        if person['type'] == 'INDI':
+            idNameDict[person['data']['xref_id']] = person['data']['NAME']
+            # Extracting the root's other informations than the name
+        if person['type'] == 'INDI' and person['data']['NAME'] == trueRootTreeName and not flagRootFound:
+            flagRootFound = True
+            trueRootDataDict = person['data']
+        # Extracting the forbidden children's ID
+        if person['type'] == 'INDI' and person['data']['NAME'] in forbiddenChildNames and flagCounterforbiddenChildFound > 0:
+            # Storing the ID matching person['data']['NAME'] in the correct index
+            forbiddenChildIds[forbiddenChildNames.index(
+                person['data']['NAME'])] = person['data']['xref_id']
+            flagCounterforbiddenChildFound = flagCounterforbiddenChildFound - 1
+
+    if not flagRootFound:
+        print('ERROR: '+trueRootTreeName+' not found in '+jsonPath)
+        sys.exit(-1)
+
     # First row
-    # I am the root, then I have no child, and I am not yet dead
-    dataRow = buildDataRow(
-        trueRootTreeName, trueRootTreeBirthDate, '', '', toolTip)
+    trueRootTreeBirthDate = extractSecureDictAttribute(
+        trueRootDataDict, 'BIRTH/DATE')
+    trueRootTreeBirthPlace = extractSecureDictAttribute(
+        trueRootDataDict, 'BIRTH/PLACE')
+    trueRootTreeId = extractSecureDictAttribute(
+        trueRootDataDict, 'xref_id')
+    trueRootTreeOccupation = extractSecureDictAttribute(
+        trueRootDataDict, 'OCCUPATION')
+    trueRootTreeSex = extractSecureDictAttribute(
+        trueRootDataDict, 'SEX')
+
+    toolTip = buildToolTip(trueRootTreeOccupation,
+                           trueRootTreeBirthPlace, '', trueRootTreeSex)
+    dataRow = buildDataRow(trueRootTreeId, trueRootTreeName,
+                           trueRootTreeBirthDate, trueRootTreeBirthPlace, '', '', toolTip)
     dataRows = dataRows + dataRow
 
     if DEBUG_MODE:
         orphanDataRow = buildDataRow(
-            DEBUG_ORPHAN_NODE__NAME, '', '', '', DEBUG_ORPHAN_NODE__TOOLTIP)
+            DEBUG_ORPHAN_NODE__ID, DEBUG_ORPHAN_NODE__NAME, '', '', '', '', DEBUG_ORPHAN_NODE__TOOLTIP)
         dataRows = dataRows + orphanDataRow
 
     for person in jsonDict['children']:
         if person['type'] == 'INDI':
             dataRow = ''
             childName = ''
+            childId = ''
+            personBirthPlace = extractSecureDictAttribute(
+                person['data'], 'BIRTH/PLACE')
+            personDeathPlace = extractSecureDictAttribute(
+                person['data'], 'DEATH/PLACE')
+            personId = extractSecureDictAttribute(
+                person['data'], 'xref_id')
             toolTip = buildToolTip(
-                extractDictAttribute(person['data'], 'OCCUPATION'),
-                extractDictAttribute(person['data'], 'BIRTH/PLACE'),
-                extractDictAttribute(person['data'], 'DEATH/PLACE'),
-                extractDictAttribute(person['data'], 'SEX'))
+                extractSecureDictAttribute(person['data'], 'OCCUPATION'),
+                personBirthPlace,
+                personDeathPlace,
+                extractSecureDictAttribute(person['data'], 'SEX'))
             personName = person['data']['NAME']
 
             # Birth date with robustness
-            if 'BIRTH/DATE' in person['data']:
-                personBirthDate = person['data']['BIRTH/DATE']
-            else:
-                personBirthDate = ''
+            personBirthDate = extractSecureDictAttribute(
+                person['data'], 'BIRTH/DATE')
 
             # Death date with robustness
-            if 'DEATH/DATE' in person['data']:
-                personDeathDate = person['data']['DEATH/DATE']
-            else:
-                personDeathDate = ''
+            personDeathDate = extractSecureDictAttribute(
+                person['data'], 'DEATH/DATE')
 
             # Avoid error for the tree root - childName will remain empty, and my sibling will not be added - i am the only root
             if personName != trueRootTreeName and personName != falseRootTreeName and '@FAMILY_SPOUSE' in person['data']:
@@ -198,7 +282,7 @@ if __name__ == '__main__':
 
                 # Manually add me as my parent's son
                 if personName in parentsOfRootTreeName:
-                    childName = trueRootTreeName
+                    childId = trueRootTreeId
                 else:
                     # Look for the person which family child ID is the same as the person's family spouse ID in the JSON file: it will be one of my son
                     possibleSons = []
@@ -216,7 +300,7 @@ if __name__ == '__main__':
                         print('INFO: ' + personName + ' has no son\n')
                         infoCounter = infoCounter + 1
                     elif len(possibleSons) == 1:
-                        childName = possibleSons[0]['NAME']
+                        childId = possibleSons[0]['xref_id']
                     else:
                         # Choose the correct son
                         print('WARNING: ' + personName +
@@ -240,30 +324,34 @@ if __name__ == '__main__':
 
                         if len(possibleSonsWhichHaveChildren) == 1:
                             # Only one candidate son have children: it is one of my ancestor
-                            childName = possibleSonsWhichHaveChildren[0]['NAME']
-                            print('SOLVED: '+childName)
+                            childId = possibleSonsWhichHaveChildren[0]['xref_id']
+                            print('SOLVED: ' +
+                                  possibleSonsWhichHaveChildren[0]['NAME'])
                             warningCounter = warningCounter - 1
                             solvedWarningCounter = solvedWarningCounter + 1
                         else:
                             # Cannot find which son is the correct one
                             if DEBUG_MODE:
-                                childName = DEBUG_ORPHAN_NODE__NAME
+                                childId = DEBUG_ORPHAN_NODE__ID
 
                         print('')
 
                 # If a child have been found, add the person in the list
                 # Else, it will be add as a parent to the DEBUG-ORPHAN node
-                if childName != '':
+                if childId != '':
                     # MANUAL CHANGE
-                    if childName not in forbiddenChildNames:
+                    if childId not in forbiddenChildIds:
                         dataRow = buildDataRow(
-                            personName, personBirthDate, personDeathDate, childName, toolTip)
+                            personId, personName, personBirthDate, personBirthPlace, personDeathDate, childId, toolTip)
                         personCounter = personCounter+1
 
                 dataRows = dataRows + dataRow
 
     # End of the rows list
     dataRows = dataRows + ']'
+
+    # Checker
+    checkerOutput = checker(jsonDict)
 
     # Writing the result in a file
     with open(outPath, 'w', encoding='utf-8') as outFile:
@@ -272,6 +360,10 @@ if __name__ == '__main__':
     # Report
     print('Finished. '+str(warningCounter) +
           ' warning(s), '+str(solvedWarningCounter)+' solved problem(s), '+str(infoCounter)+' info(s).')
+    if checkerOutput:
+        print('The checker returned no error.')
+    else:
+        print('The checker returned error(s).')
     # Writing the formatted dates in a file
     if DEBUG_MODE:
         with open('./formatted_dates.txt', 'w', encoding='utf-8') as outFile:
