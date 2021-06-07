@@ -8,8 +8,8 @@ __name__ = 'treeConstants'
 trueRootTreeName = 'Lucas /Luigi/'
 
 # Parents of the root
-parentsOfRootTreeName = {
-    'Papa', 'Maman'}
+parentsOfRootTreeName = [
+    'Papa', 'Maman']
 
 # Sibling of the root, not displayed in the website
 falseRootTreeName = 'Paul /Luigi/'
