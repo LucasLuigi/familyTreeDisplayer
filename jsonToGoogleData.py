@@ -180,12 +180,17 @@ if __name__ == '__main__':
         jsonDict = json.loads(jsonFileContent)
 
     # Counters
-    personCounter = 0
+    personInTheHtmlTreeCounter = 0
+    personInTheJsonTreeCounter = 0
     solvedWarningCounter = 0
     warningCounter = 0
     infoCounter = 0
 
     # Constants
+    # - Log
+    WARNING_LOG_PREFIX = 'WARNING: '
+    SOLVED_LOG_PREFIX = 'SOLVED: '
+
     # - Root
     treeConstantsModule = importlib.import_module('treeConstants')
 
@@ -212,6 +217,7 @@ if __name__ == '__main__':
         # Building a (id, name) dict
         if person['type'] == 'INDI':
             idNameDict[person['data']['xref_id']] = person['data']['NAME']
+            personInTheJsonTreeCounter = personInTheJsonTreeCounter + 1
             # Extracting the root's other informations than the name
         if person['type'] == 'INDI' and person['data']['NAME'] == trueRootTreeName and not flagRootFound:
             flagRootFound = True
@@ -244,6 +250,7 @@ if __name__ == '__main__':
     dataRow = buildDataRow(trueRootTreeId, trueRootTreeName,
                            trueRootTreeBirthDate, trueRootTreeBirthPlace, '', '', toolTip)
     dataRows = dataRows + dataRow
+    personInTheHtmlTreeCounter = personInTheHtmlTreeCounter + 1
 
     if DEBUG_MODE:
         orphanDataRow = buildDataRow(
@@ -251,6 +258,8 @@ if __name__ == '__main__':
         dataRows = dataRows + orphanDataRow
 
     for person in jsonDict['children']:
+        warningLog = ''
+
         if person['type'] == 'INDI':
             dataRow = ''
             childName = ''
@@ -305,13 +314,13 @@ if __name__ == '__main__':
                         childId = possibleSons[0]['xref_id']
                     else:
                         # Choose the correct son
-                        print('WARNING: ' + personName +
-                              ' has several sons:')
+                        warningLog = personName + ' has several sons:\n'
                         warningCounter = warningCounter + 1
                         # First loop: get the family ID built (as a spouse) by each candidate son
                         possibleSonsWhichHaveChildren = []
                         for eachSon in possibleSons:
-                            print('  -' + eachSon['NAME'])
+                            warningLog = warningLog + \
+                                '  -' + eachSon['NAME']+'\n'
                             for possibleGrandSonIter in jsonDict['children']:
                                 if possibleGrandSonIter['type'] == 'INDI':
                                     if possibleGrandSonIter['data']['NAME'] != trueRootTreeName:
@@ -327,11 +336,12 @@ if __name__ == '__main__':
                         if len(possibleSonsWhichHaveChildren) == 1:
                             # Only one candidate son have children: it is one of my ancestor
                             childId = possibleSonsWhichHaveChildren[0]['xref_id']
-                            print('SOLVED: ' +
-                                  possibleSonsWhichHaveChildren[0]['NAME'])
+                            print(SOLVED_LOG_PREFIX + warningLog + ' --> ' +
+                                  possibleSonsWhichHaveChildren[0]['NAME'] + ' <--')
                             warningCounter = warningCounter - 1
                             solvedWarningCounter = solvedWarningCounter + 1
                         else:
+                            print(WARNING_LOG_PREFIX + warningLog)
                             # Cannot find which son is the correct one
                             if DEBUG_MODE:
                                 childId = DEBUG_ORPHAN_NODE__ID
@@ -343,7 +353,7 @@ if __name__ == '__main__':
                 if childId != '':
                     dataRow = buildDataRow(
                         personId, personName, personBirthDate, personBirthPlace, personDeathDate, childId, toolTip)
-                    personCounter = personCounter+1
+                    personInTheHtmlTreeCounter = personInTheHtmlTreeCounter+1
 
                 dataRows = dataRows + dataRow
 
@@ -358,12 +368,12 @@ if __name__ == '__main__':
         outFile.write(dataRows)
 
     # Report
-    print('Finished. '+str(warningCounter) +
-          ' warning(s), '+str(solvedWarningCounter)+' solved problem(s), '+str(infoCounter)+' info(s).')
+    print('Finished, '+str(personInTheHtmlTreeCounter)+' people added out of '+str(personInTheJsonTreeCounter)+' in the original tree.\n'+str(warningCounter) +
+          ' not solved warning(s), '+str(solvedWarningCounter)+' solved one(s), '+str(infoCounter)+' info(s).')
     if checkerOutput:
-        print('The checker returned no error.')
+        print('\nThe checker returned no error.\n')
     else:
-        print('The checker returned error(s).')
+        print('\nThe checker returned error(s).\n')
     # Writing the formatted dates in a file
     with open('./formatted_dates.txt', 'w', encoding='utf-8') as outFile:
         if DEBUG_MODE:
