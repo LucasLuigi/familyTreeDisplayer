@@ -292,9 +292,11 @@ if __name__ == '__main__':
                             if possibleSonIterName != trueRootTreeName and '@FAMILY_CHILD' in possibleSonIter['data']:
                                 personFamilyChild = possibleSonIter['data']['@FAMILY_CHILD']
                                 if personFamilySpouse == personFamilyChild:
-                                    # Store the different found son
-                                    possibleSons.append(
-                                        possibleSonIter['data'])
+                                    # Do not keep in the candidate child list the forbidden ones
+                                    if possibleSonIter['data']['xref_id'] not in forbiddenChildIds:
+                                        # Store the different found son
+                                        possibleSons.append(
+                                            possibleSonIter['data'])
                     if len(possibleSons) == 0:
                         # No son found - does not have to be in the tree (unless there is an error)
                         print('INFO: ' + personName + ' has no son\n')
@@ -339,11 +341,9 @@ if __name__ == '__main__':
                 # If a child have been found, add the person in the list
                 # Else, it will be add as a parent to the DEBUG-ORPHAN node
                 if childId != '':
-                    # MANUAL CHANGE
-                    if childId not in forbiddenChildIds:
-                        dataRow = buildDataRow(
-                            personId, personName, personBirthDate, personBirthPlace, personDeathDate, childId, toolTip)
-                        personCounter = personCounter+1
+                    dataRow = buildDataRow(
+                        personId, personName, personBirthDate, personBirthPlace, personDeathDate, childId, toolTip)
+                    personCounter = personCounter+1
 
                 dataRows = dataRows + dataRow
 
@@ -365,6 +365,9 @@ if __name__ == '__main__':
     else:
         print('The checker returned error(s).')
     # Writing the formatted dates in a file
-    if DEBUG_MODE:
-        with open('./formatted_dates.txt', 'w', encoding='utf-8') as outFile:
+    with open('./formatted_dates.txt', 'w', encoding='utf-8') as outFile:
+        if DEBUG_MODE:
             outFile.write(birthDatesList+deathDatesList)
+        else:
+            # Flush the file
+            outFile.write("")
