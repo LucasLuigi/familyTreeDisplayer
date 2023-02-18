@@ -4,7 +4,7 @@ node_modules/
 archives.lnk
 
 formatted_dates.txt
-RESULT/backup.json
+RESULT.backup.json
 
 # Not my repo git
 gedcom-main/
