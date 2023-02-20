@@ -26,7 +26,7 @@ idNameDict = {}
 childrenDict = {}
 
 
-def buildDataRow(id, name, birthDate, birthPlace, deathDate, childId, toolTip):
+def buildDataRow(id, name, nickname, birthDate, birthPlace, deathDate, childId, toolTip):
     global childrenDict
     # Debug
     global DEBUG_MODE
@@ -49,6 +49,8 @@ def buildDataRow(id, name, birthDate, birthPlace, deathDate, childId, toolTip):
     dataRow = dataRow + '\', \'f\': \''
     if appliedDisplayMode == displayMode.COMPLETE:
         dataRow = dataRow + name.replace('\'', '\\\'').replace('/', '')
+        if nickname != "":
+            dataRow = dataRow + ", dit " + nickname
         dataRow = dataRow + '<br><br><div style="color:green; font-style:italic">'
         dataRow = dataRow + formatDate(birthDate) + '</div>'
         dataRow = dataRow + ' — '
@@ -244,17 +246,19 @@ if __name__ == '__main__':
         trueRootDataDict, 'OCCUPATION')
     trueRootTreeSex = extractSecureDictAttribute(
         trueRootDataDict, 'SEX')
+    trueRootTreeNickname = extractSecureDictAttribute(
+        trueRootDataDict, 'NAME/NICKNAME')
 
     toolTip = buildToolTip(trueRootTreeOccupation,
                            trueRootTreeBirthPlace, '', trueRootTreeSex)
-    dataRow = buildDataRow(trueRootTreeId, trueRootTreeName,
+    dataRow = buildDataRow(trueRootTreeId, trueRootTreeName, trueRootTreeNickname,
                            trueRootTreeBirthDate, trueRootTreeBirthPlace, '', '', toolTip)
     dataRows = dataRows + dataRow
     personInTheHtmlTreeCounter = personInTheHtmlTreeCounter + 1
 
     if DEBUG_MODE:
         orphanDataRow = buildDataRow(
-            DEBUG_ORPHAN_NODE__ID, DEBUG_ORPHAN_NODE__NAME, '', '', '', '', DEBUG_ORPHAN_NODE__TOOLTIP)
+            DEBUG_ORPHAN_NODE__ID, DEBUG_ORPHAN_NODE__NAME, '', '', '', '', '', DEBUG_ORPHAN_NODE__TOOLTIP)
         dataRows = dataRows + orphanDataRow
 
     for person in jsonDict['children']:
@@ -276,6 +280,8 @@ if __name__ == '__main__':
                 personDeathPlace,
                 extractSecureDictAttribute(person['data'], 'SEX'))
             personName = person['data']['NAME']
+            personNickname = extractSecureDictAttribute(
+                person['data'], 'NAME/NICKNAME')
 
             # Birth date with robustness
             personBirthDate = extractSecureDictAttribute(
@@ -352,7 +358,7 @@ if __name__ == '__main__':
                 # Else, it will be add as a parent to the DEBUG-ORPHAN node
                 if childId != '':
                     dataRow = buildDataRow(
-                        personId, personName, personBirthDate, personBirthPlace, personDeathDate, childId, toolTip)
+                        personId, personName, personNickname, personBirthDate, personBirthPlace, personDeathDate, childId, toolTip)
                     personInTheHtmlTreeCounter = personInTheHtmlTreeCounter+1
 
                 dataRows = dataRows + dataRow
