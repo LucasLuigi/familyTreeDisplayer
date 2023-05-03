@@ -267,7 +267,7 @@ if __name__ == '__main__':
         if person['type'] == 'INDI':
             dataRow = ''
             childName = ''
-            childId = ''
+            childIdList = []
             personBirthPlace = extractSecureDictAttribute(
                 person['data'], 'BIRTH/PLACE')
             personDeathPlace = extractSecureDictAttribute(
@@ -297,7 +297,7 @@ if __name__ == '__main__':
 
                 # Manually add me as my parent's son
                 if personName in parentsOfRootTreeName:
-                    childId = trueRootTreeId
+                    childIdList.append(trueRootTreeId)
                 else:
                     # Look for the person which family child ID is the same as the person's family spouse ID in the JSON file: it will be one of my son
                     possibleSons = []
@@ -317,7 +317,7 @@ if __name__ == '__main__':
                         print('INFO: ' + personName + ' has no son\n')
                         infoCounter = infoCounter + 1
                     elif len(possibleSons) == 1:
-                        childId = possibleSons[0]['xref_id']
+                        childIdList.append(possibleSons[0]['xref_id'])
                     else:
                         # Choose the correct son
                         warningLog = personName + ' has several sons:\n'
@@ -341,27 +341,37 @@ if __name__ == '__main__':
 
                         if len(possibleSonsWhichHaveChildren) == 1:
                             # Only one candidate son have children: it is one of my ancestor
-                            childId = possibleSonsWhichHaveChildren[0]['xref_id']
+                            childIdList.append(
+                                possibleSonsWhichHaveChildren[0]['xref_id'])
                             print(SOLVED_LOG_PREFIX + warningLog + ' --> ' +
                                   possibleSonsWhichHaveChildren[0]['NAME'] + ' <--')
                             warningCounter = warningCounter - 1
                             solvedWarningCounter = solvedWarningCounter + 1
                         else:
-                            print(WARNING_LOG_PREFIX + warningLog)
-                            # Cannot find which son is the correct one
-                            if DEBUG_MODE:
-                                childId = DEBUG_ORPHAN_NODE__ID
+                            print(SOLVED_LOG_PREFIX + warningLog + ' !!! ' +
+                                  'Adding each one of them' + ' !!!')
+                            # Cannot find which son is the correct one: I guess each one is correct (wedding between cousins)
+                            for eachPossibleSon in possibleSonsWhichHaveChildren:
+                                childIdList.append(
+                                    eachPossibleSon['xref_id'])
+                            warningCounter = warningCounter - 1
+                            solvedWarningCounter = solvedWarningCounter + 1
 
                         print('')
 
                 # If a child have been found, add the person in the list
                 # Else, it will be add as a parent to the DEBUG-ORPHAN node
-                if childId != '':
-                    dataRow = buildDataRow(
-                        personId, personName, personNickname, personBirthDate, personBirthPlace, personDeathDate, childId, toolTip)
-                    personInTheHtmlTreeCounter = personInTheHtmlTreeCounter+1
-
-                dataRows = dataRows + dataRow
+                if len(childIdList) != 0:
+                    # Used in case one person has two sons in my tree (wedding between cousins)
+                    duplicaterIndex = 1
+                    for childIdItem in childIdList:
+                        # FIXME marche pas. Le lien dans les graphes se fait entre personId et childIdItem.
+                        # Ici, j'ai une person qui a 2 enfants. Je dois la rajouter mais avec 2 index différents (+ faire les liens)
+                        dataRow = buildDataRow(
+                            f"{personId}+{duplicaterIndex}", personName, personNickname, personBirthDate, personBirthPlace, personDeathDate, f"{childIdItem}+{duplicaterIndex}", toolTip)
+                        personInTheHtmlTreeCounter = personInTheHtmlTreeCounter+1
+                        dataRows = dataRows + dataRow
+                        duplicaterIndex += 1
 
     # End of the rows list
     dataRows = dataRows + ']'
