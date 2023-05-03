@@ -5,10 +5,11 @@ import json
 import importlib
 
 from enum import Enum
+from dataclasses import dataclass
 
 # Debug mode
 # Choosed in __main__
-DEBUG_MODE = False
+DEBUG_MODE = True
 birthDatesList = ''
 deathDatesList = ''
 
@@ -17,6 +18,12 @@ deathDatesList = ''
 class displayMode(Enum):
     COMPLETE = 0
     BIRTHPLACE = 1
+
+
+@dataclass
+class SimplePerson:
+    name: str
+    id: str
 
 
 appliedDisplayMode = displayMode.COMPLETE
@@ -145,7 +152,7 @@ def formatDate(date):
     return formattedDate
 
 
-def checker(jsonDict):
+def checker():
     global childrenDict
     global idNameDict
     output = True
@@ -157,6 +164,44 @@ def checker(jsonDict):
                   str(childrenDict[childId])+' parents.')
     print('')
     return output
+
+
+def detectCousinMarriages(jsonDict, forbiddenChildIds, trueRootTreeName, falseRootTreeName):
+    mapFamilyChildId = {}
+    listFamiliesWithSeveralChildren = []
+    listSiblings = []
+    for person in jsonDict['children']:
+        if person['type'] == 'INDI':
+            if '@FAMILY_CHILD' in person['data']:
+                familyChildId = person['data']['@FAMILY_CHILD']
+                personName = person['data']['NAME']
+                personId = person['data']['xref_id']
+                if personId not in forbiddenChildIds and personName != trueRootTreeName and personName != falseRootTreeName:
+                    if familyChildId not in mapFamilyChildId:
+                        mapFamilyChildId[familyChildId] = []
+                    else:
+                        # Several siblings detected
+                        listFamiliesWithSeveralChildren.append(familyChildId)
+                    mapFamilyChildId[familyChildId].append(
+                        SimplePerson(personName, personId))
+
+    # Remove duplicates
+    listFamiliesWithSeveralChildren = list(
+        set(listFamiliesWithSeveralChildren))
+    for familyChildWithSeveralSiblings in listFamiliesWithSeveralChildren:
+        listSiblings.append(mapFamilyChildId[familyChildWithSeveralSiblings])
+
+    print(listSiblings)
+
+    for setOfSiblings in listSiblings:
+        # TODO Les retrouver dans le json, et checker si elles ont un enfin (si leur familySpouseId est le familyChildId de qqn je pense)
+        # Sinon, les virer de la liste. Pour la suite, jsp
+
+
+def duplicateAncestorsOfCousinMarriages(jsonDict, forbiddenChildIds, trueRootTreeName, falseRootTreeName):
+    detectCousinMarriages(jsonDict, forbiddenChildIds,
+                          trueRootTreeName, falseRootTreeName)
+    return jsonDict
 
 
 # [
@@ -234,6 +279,9 @@ if __name__ == '__main__':
     if not flagRootFound:
         print('ERROR: '+trueRootTreeName+' not found in '+jsonPath)
         sys.exit(-1)
+
+    jsonDict = duplicateAncestorsOfCousinMarriages(
+        jsonDict, forbiddenChildIds, trueRootTreeName, falseRootTreeName)
 
     # First row
     trueRootTreeBirthDate = extractSecureDictAttribute(
@@ -361,14 +409,14 @@ if __name__ == '__main__':
 
                 # If a child have been found, add the person in the list
                 # Else, it will be add as a parent to the DEBUG-ORPHAN node
-                if len(childIdList) != 0:
+                if len(childIdList) > 0:
                     # Used in case one person has two sons in my tree (wedding between cousins)
                     duplicaterIndex = 1
                     for childIdItem in childIdList:
                         # FIXME marche pas. Le lien dans les graphes se fait entre personId et childIdItem.
-                        # Ici, j'ai une person qui a 2 enfants. Je dois la rajouter mais avec 2 index différents (+ faire les liens)
+                        # Ici, j'ai une personne qui a 2 enfants. Je dois la rajouter mais avec 2 index différents (+ faire les liens)
                         dataRow = buildDataRow(
-                            f"{personId}+{duplicaterIndex}", personName, personNickname, personBirthDate, personBirthPlace, personDeathDate, f"{childIdItem}+{duplicaterIndex}", toolTip)
+                            f"{personId}", personName, personNickname, personBirthDate, personBirthPlace, personDeathDate, f"{childIdItem}", toolTip)
                         personInTheHtmlTreeCounter = personInTheHtmlTreeCounter+1
                         dataRows = dataRows + dataRow
                         duplicaterIndex += 1
@@ -377,7 +425,7 @@ if __name__ == '__main__':
     dataRows = dataRows + ']'
 
     # Checker
-    checkerOutput = checker(jsonDict)
+    checkerOutput = checker()
 
     # Writing the result in a file
     with open(outPath, 'w', encoding='utf-8') as outFile:
