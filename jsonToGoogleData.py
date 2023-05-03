@@ -383,6 +383,14 @@ if __name__ == '__main__':
     with open(outPath, 'w', encoding='utf-8') as outFile:
         outFile.write(dataRows)
 
+    # Writing the result in the HTML page
+    with open('familyTreeDisplayer.template.html', 'r', encoding='utf-8') as templateWebPage:
+        templateWebPageContent = templateWebPage.read()
+        webPageContent = templateWebPageContent.replace(
+            'GENERATED_DATA', dataRows)
+        with open('familyTreeDisplayer.html', 'w', encoding='utf-8') as outputWebPage:
+            outputWebPage.write(webPageContent)
+
     # Report
     print('Finished, '+str(personInTheHtmlTreeCounter)+' people added out of '+str(personInTheJsonTreeCounter)+' in the original tree.\n'+str(warningCounter) +
           ' not solved warning(s), '+str(solvedWarningCounter)+' solved one(s), '+str(infoCounter)+' info(s).')
