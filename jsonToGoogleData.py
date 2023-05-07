@@ -256,41 +256,26 @@ def _detectCousinMarriages(jsonDict, forbiddenChildIds, trueRootTreeName, falseR
 
 
 def _duplicateAncestorsOfCousinMarriages(jsonDict: dict, setOfSiblings: list):
-    firstSibling = setOfSiblings[0]
-    for item in jsonDict['children']:
-        if item['type'] == 'INDI':
-            if item['data']['xref_id'] == firstSibling.id:
-                if '@FAMILY_CHILD' in item['data']:
-                    idxSibling = 0
-                    originalItem = item.copy()
-                    duplicatedItem = originalItem.copy()
-                    jsonDict['children'].remove(item)
-                    duplicatedItem['data']['xref_id'] = duplicatedItem['data']['xref_id'] + \
-                        str(idxSibling)
-                    if '@FAMILY_CHILD' in duplicatedItem['data']:
-                        familyChildId = duplicatedItem['data']['@FAMILY_CHILD']
-                        # FIXME: find the darons before duplicating?
-                        # FIXME: 2 fois en @1
-                        # TODO: recursive
-                        duplicatedItem['data']['@FAMILY_CHILD'] = duplicatedItem['data']['@FAMILY_CHILD'] + \
+    idxSibling = 0
+    for sibling in setOfSiblings:
+        for item in jsonDict['children']:
+            if item['type'] == 'INDI':
+                if item['data']['xref_id'] == sibling.id:
+                    if '@FAMILY_CHILD' in item['data']:
+                        duplicatedItem = item.copy()
+                        jsonDict['children'].remove(item)
+                        duplicatedItem['data']['xref_id'] = duplicatedItem['data']['xref_id'] + \
                             str(idxSibling)
-                    if '@FAMILY_SPOUSE' in duplicatedItem['data']:
-                        duplicatedItem['data']['@FAMILY_SPOUSE'] = duplicatedItem['data']['@FAMILY_SPOUSE'] + \
-                            str(idxSibling)
-                    jsonDict['children'].append(duplicatedItem)
-                    for _ in setOfSiblings[1:]:
-                        idxSibling += 1
-                        duplicatedItem = originalItem.copy()
-                        duplicatedItem['data']['xref_id'] = duplicatedItem['data']['xref_id'] + str(
-                            idxSibling)
                         if '@FAMILY_CHILD' in duplicatedItem['data']:
+                            familyChildId = duplicatedItem['data']['@FAMILY_CHILD']
+                            # TODO: find the darons after + recursive
                             duplicatedItem['data']['@FAMILY_CHILD'] = duplicatedItem['data']['@FAMILY_CHILD'] + \
                                 str(idxSibling)
                         if '@FAMILY_SPOUSE' in duplicatedItem['data']:
                             duplicatedItem['data']['@FAMILY_SPOUSE'] = duplicatedItem['data']['@FAMILY_SPOUSE'] + \
                                 str(idxSibling)
                         jsonDict['children'].append(duplicatedItem)
-
+        idxSibling += 1
     return jsonDict
 
 
