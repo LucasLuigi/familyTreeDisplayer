@@ -4,6 +4,8 @@ node_modules/
 archives.lnk
 
 formatted_dates.txt
+before.json
+after.json
 RESULT.backup.json
 base.ged
 googleRowsData.txt

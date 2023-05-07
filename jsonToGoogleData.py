@@ -152,6 +152,39 @@ def formatDate(date):
     return formattedDate
 
 
+def _genericSearchByKey(jsonDict: dict, keyToSearch: str, valueToCompare: str) -> list:
+    results = []
+    for item in jsonDict['children']:
+        if item['type'] == 'INDI':
+            if keyToSearch in item['data']:
+                if item['data'][keyToSearch] == valueToCompare:
+                    results.append(item)
+    return results
+
+
+def getPersonDictById(jsonDict: dict, personId: str) -> dict:
+    results = _genericSearchByKey(jsonDict, 'xref_id', personId)
+    if len(results) == 1:
+        return results[0]
+    else:
+        return {}
+
+
+def getPersonDictsByName(jsonDict: dict, personName: str) -> list:
+    results = _genericSearchByKey(jsonDict, 'NAME', personName)
+    return results
+
+
+def getPersonDictsByFamilySpouseId(jsonDict: dict, familySpouseId: str) -> dict:
+    results = _genericSearchByKey(jsonDict, '@FAMILY_SPOUSE', familySpouseId)
+    return results
+
+
+def getPersonDictsByFamilyChildId(jsonDict: dict, familyChildId: str) -> dict:
+    results = _genericSearchByKey(jsonDict, '@FAMILY_CHILD', familyChildId)
+    return results
+
+
 def checker():
     global childrenDict
     global idNameDict
@@ -166,7 +199,7 @@ def checker():
     return output
 
 
-def detectCousinMarriages(jsonDict, forbiddenChildIds, trueRootTreeName, falseRootTreeName):
+def _detectCousinMarriages(jsonDict, forbiddenChildIds, trueRootTreeName, falseRootTreeName):
     mapFamilyChildId = {}
     listFamiliesWithSeveralChildren = []
     listSiblings = []
@@ -191,16 +224,104 @@ def detectCousinMarriages(jsonDict, forbiddenChildIds, trueRootTreeName, falseRo
     for familyChildWithSeveralSiblings in listFamiliesWithSeveralChildren:
         listSiblings.append(mapFamilyChildId[familyChildWithSeveralSiblings])
 
-    print(listSiblings)
+    listSiblingsIdxHavingChildren = [
+        idx for idx in range(0, len(listSiblings))]
 
+    # Remove siblings not having child
+    idxListSiblings = 0
     for setOfSiblings in listSiblings:
-        # TODO Les retrouver dans le json, et checker si elles ont un enfin (si leur familySpouseId est le familyChildId de qqn je pense)
-        # Sinon, les virer de la liste. Pour la suite, jsp
+        for sibling in setOfSiblings:
+            siblingElement = getPersonDictById(jsonDict, sibling.id)
+            if '@FAMILY_SPOUSE' in siblingElement['data']:
+                siblingFamilySpouse = siblingElement['data']['@FAMILY_SPOUSE']
+                childrenOfSibling = getPersonDictsByFamilyChildId(
+                    jsonDict, familyChildId=siblingFamilySpouse)
+                if len(childrenOfSibling) == 0:
+                    try:
+                        listSiblingsIdxHavingChildren.remove(idxListSiblings)
+                    except ValueError:
+                        pass
+            else:
+                # No spouse, no child
+                try:
+                    listSiblingsIdxHavingChildren.remove(idxListSiblings)
+                except ValueError:
+                    pass
+        idxListSiblings += 1
+
+    listSiblings = [item for item in listSiblings if listSiblings.index(
+        item) in listSiblingsIdxHavingChildren]
+
+    return listSiblings
 
 
-def duplicateAncestorsOfCousinMarriages(jsonDict, forbiddenChildIds, trueRootTreeName, falseRootTreeName):
-    detectCousinMarriages(jsonDict, forbiddenChildIds,
-                          trueRootTreeName, falseRootTreeName)
+def _duplicateAncestorsOfCousinMarriages(jsonDict: dict, setOfSiblings: list):
+    firstSibling = setOfSiblings[0]
+    for item in jsonDict['children']:
+        if item['type'] == 'INDI':
+            if item['data']['xref_id'] == firstSibling.id:
+                if '@FAMILY_CHILD' in item['data']:
+                    idxSibling = 0
+                    originalItem = item.copy()
+                    duplicatedItem = originalItem.copy()
+                    jsonDict['children'].remove(item)
+                    duplicatedItem['data']['xref_id'] = duplicatedItem['data']['xref_id'] + \
+                        str(idxSibling)
+                    if '@FAMILY_CHILD' in duplicatedItem['data']:
+                        familyChildId = duplicatedItem['data']['@FAMILY_CHILD']
+                        # FIXME: find the darons before duplicating?
+                        # FIXME: 2 fois en @1
+                        # TODO: recursive
+                        duplicatedItem['data']['@FAMILY_CHILD'] = duplicatedItem['data']['@FAMILY_CHILD'] + \
+                            str(idxSibling)
+                    if '@FAMILY_SPOUSE' in duplicatedItem['data']:
+                        duplicatedItem['data']['@FAMILY_SPOUSE'] = duplicatedItem['data']['@FAMILY_SPOUSE'] + \
+                            str(idxSibling)
+                    jsonDict['children'].append(duplicatedItem)
+                    for _ in setOfSiblings[1:]:
+                        idxSibling += 1
+                        duplicatedItem = originalItem.copy()
+                        duplicatedItem['data']['xref_id'] = duplicatedItem['data']['xref_id'] + str(
+                            idxSibling)
+                        if '@FAMILY_CHILD' in duplicatedItem['data']:
+                            duplicatedItem['data']['@FAMILY_CHILD'] = duplicatedItem['data']['@FAMILY_CHILD'] + \
+                                str(idxSibling)
+                        if '@FAMILY_SPOUSE' in duplicatedItem['data']:
+                            duplicatedItem['data']['@FAMILY_SPOUSE'] = duplicatedItem['data']['@FAMILY_SPOUSE'] + \
+                                str(idxSibling)
+                        jsonDict['children'].append(duplicatedItem)
+
+    return jsonDict
+
+
+# Ancestors of siblings having descendants married together (cousin marriages) are just displayed above
+# one of the siblings (because Google Rows duplicated ID are filtered)
+# One solution is to duplicate the chain of ancestors and link to each sibling with different person/child id
+def prepareJsonDictToCorrectlyDisplayCousinMarriages(jsonDict, forbiddenChildIds, trueRootTreeName, falseRootTreeName):
+    print("COUSIN MARRIAGES: Detecting...", end='')
+    listSiblings = _detectCousinMarriages(jsonDict, forbiddenChildIds,
+                                          trueRootTreeName, falseRootTreeName)
+    numberOfResults = len(listSiblings)
+    if numberOfResults == 0:
+        print("")
+    else:
+        print(f" {numberOfResults} set of siblings:")
+        print(" - ", end='')
+        for setOfSiblings in listSiblings:
+            idxSiblingInSet = 0
+            for sibling in setOfSiblings:
+                print(sibling.name.replace("/", ""), end='')
+                if idxSiblingInSet != len(setOfSiblings) - 1:
+                    print(', ', end='')
+                idxSiblingInSet += 1
+            print("")
+            with open('./before.json', 'w', encoding='utf-8') as outFile:
+                outFile.write(json.dumps(jsonDict, indent=4))
+            jsonDict = _duplicateAncestorsOfCousinMarriages(
+                jsonDict, setOfSiblings)
+            with open('./after.json', 'w', encoding='utf-8') as outFile:
+                outFile.write(json.dumps(jsonDict, indent=4))
+
     return jsonDict
 
 
@@ -280,7 +401,7 @@ if __name__ == '__main__':
         print('ERROR: '+trueRootTreeName+' not found in '+jsonPath)
         sys.exit(-1)
 
-    jsonDict = duplicateAncestorsOfCousinMarriages(
+    jsonDict = prepareJsonDictToCorrectlyDisplayCousinMarriages(
         jsonDict, forbiddenChildIds, trueRootTreeName, falseRootTreeName)
 
     # First row
