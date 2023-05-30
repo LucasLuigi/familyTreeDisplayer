@@ -6,6 +6,7 @@ import importlib
 
 from enum import Enum
 from dataclasses import dataclass
+from copy import deepcopy
 
 # Debug mode
 # Choosed in __main__
@@ -255,27 +256,72 @@ def _detectCousinMarriages(jsonDict, forbiddenChildIds, trueRootTreeName, falseR
     return listSiblings
 
 
-def _duplicateAncestorsOfCousinMarriages(jsonDict: dict, setOfSiblings: list):
+def _recursevelyDuplicateAncestorsOfTheseSiblings(jsonDict: dict, familyChildId: int, setOfSiblings: list, level: int) -> dict:
+    # To avoid endless recursion
+    if familyChildId == None:
+        return jsonDict
+    newFamilyChildId = None
+    peopleToDelete = []
+    # Searching the parent of the previous person (which has familyChildId)
+    # The parents of one person have their @FAMILY_SPOUSE equal to the @FAMILY_CHILD of this person
+    for item in jsonDict['children']:
+        if item['type'] == 'INDI':
+            if '@FAMILY_SPOUSE' in item['data']:
+                if item['data']['@FAMILY_SPOUSE'] == familyChildId:
+                    idxSibling = 0
+                    # Looping on the siblings to create the correct number of duplicated ancestors
+                    for _ in setOfSiblings:
+                        # deepcopy creates copy of the element contrary to .copy() which suffix the ids with 01 (or 01234 if len(setOfSiblings) is 5)
+                        duplicatedItem = deepcopy(item)
+                        # Creating N new person whith xref_id, @FAMILY_SPOUSE and @FAMILY_CHILD suffixed with idxSibling
+                        duplicatedItem['data']['xref_id'] = duplicatedItem['data']['xref_id'] + \
+                            str(idxSibling)
+                        duplicatedItem['data']['@FAMILY_SPOUSE'] = duplicatedItem['data']['@FAMILY_SPOUSE'] + \
+                            str(idxSibling)
+                        if '@FAMILY_CHILD' in duplicatedItem['data']:
+                            newFamilyChildId = duplicatedItem['data']['@FAMILY_CHILD']
+                            duplicatedItem['data']['@FAMILY_CHILD'] = duplicatedItem['data']['@FAMILY_CHILD'] + \
+                                str(idxSibling)
+                        jsonDict['children'].append(duplicatedItem)
+                        idxSibling += 1
+                    jsonDict = _recursevelyDuplicateAncestorsOfTheseSiblings(
+                        jsonDict, newFamilyChildId, setOfSiblings, level+1)
+                    # Deleting original person later (to not break the loop for)
+                    peopleToDelete.append(item)
+
+    for personToDelete in peopleToDelete:
+        jsonDict['children'].remove(personToDelete)
+    return jsonDict
+
+
+def _duplicateSiblingsAtTheOriginOfTheFutureCousinMarriages(jsonDict: dict, setOfSiblings: list):
     idxSibling = 0
+    familyChildId = None
     for sibling in setOfSiblings:
+        peopleToDelete = []
+        # Searching the sibling
         for item in jsonDict['children']:
             if item['type'] == 'INDI':
                 if item['data']['xref_id'] == sibling.id:
                     if '@FAMILY_CHILD' in item['data']:
-                        duplicatedItem = item.copy()
-                        jsonDict['children'].remove(item)
+                        duplicatedItem = deepcopy(item)
+                        # Creating N new children whith xref_id and @FAMILY_CHILD suffixed with idxSibling
+                        # @FAMILY_SPOUSE is not modified to not affect the link between these siblings and their children
+                        # Here we just want to duplicate ancestors
                         duplicatedItem['data']['xref_id'] = duplicatedItem['data']['xref_id'] + \
                             str(idxSibling)
                         if '@FAMILY_CHILD' in duplicatedItem['data']:
                             familyChildId = duplicatedItem['data']['@FAMILY_CHILD']
-                            # TODO: find the darons after + recursive
                             duplicatedItem['data']['@FAMILY_CHILD'] = duplicatedItem['data']['@FAMILY_CHILD'] + \
                                 str(idxSibling)
-                        if '@FAMILY_SPOUSE' in duplicatedItem['data']:
-                            duplicatedItem['data']['@FAMILY_SPOUSE'] = duplicatedItem['data']['@FAMILY_SPOUSE'] + \
-                                str(idxSibling)
                         jsonDict['children'].append(duplicatedItem)
+                        # Deleting original person later (to not break the loop for)
+                        peopleToDelete.append(item)
         idxSibling += 1
+        for personToDelete in peopleToDelete:
+            jsonDict['children'].remove(personToDelete)
+    jsonDict = _recursevelyDuplicateAncestorsOfTheseSiblings(
+        jsonDict, familyChildId, setOfSiblings, 1)
     return jsonDict
 
 
@@ -302,7 +348,7 @@ def prepareJsonDictToCorrectlyDisplayCousinMarriages(jsonDict, forbiddenChildIds
             print("")
             with open('./before.json', 'w', encoding='utf-8') as outFile:
                 outFile.write(json.dumps(jsonDict, indent=4))
-            jsonDict = _duplicateAncestorsOfCousinMarriages(
+            jsonDict = _duplicateSiblingsAtTheOriginOfTheFutureCousinMarriages(
                 jsonDict, setOfSiblings)
             with open('./after.json', 'w', encoding='utf-8') as outFile:
                 outFile.write(json.dumps(jsonDict, indent=4))
