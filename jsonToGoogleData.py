@@ -10,7 +10,7 @@ from copy import deepcopy
 
 # Debug mode
 # Choosed in __main__
-DEBUG_MODE = True
+DEBUG_MODE = False
 birthDatesList = ''
 deathDatesList = ''
 
