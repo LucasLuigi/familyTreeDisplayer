@@ -352,6 +352,7 @@ def prepareJsonDictToCorrectlyDisplayCousinMarriages(jsonDict, forbiddenChildIds
                 jsonDict, setOfSiblings)
             with open('./after.json', 'w', encoding='utf-8') as outFile:
                 outFile.write(json.dumps(jsonDict, indent=4))
+    print("")
 
     return jsonDict
 
