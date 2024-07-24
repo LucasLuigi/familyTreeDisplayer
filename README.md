@@ -7,6 +7,11 @@ Python 3.9+
 
 ## Installation steps
 
+Informations:
+
+- npm version 6.14.12
+- nodejs 18.12.0 (installed via chocolatey)
+
 1. Clone [tmcw/gedcom](https://github.com/tmcw/gedcom)
 2. Install it globally `npm install -g`
 3. Add it as ths project's dependency: `npm install gedcom`
