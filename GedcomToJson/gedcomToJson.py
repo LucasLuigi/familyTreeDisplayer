@@ -55,11 +55,26 @@ class GedcomParser():
             logging.error(f'Cannot read {input_file_path}')
             os._exit(ReturnCode.ERR_READ_INPUT_FILE.value)
 
+    def _clean_not_utf_chars(self):
+        logging.debug('Cleaning input lines')
+        array_index = 0
+        for raw_line in self._input_file_array:
+            rstripped_line = raw_line.rstrip("\n").rstrip(
+                '\r').rstrip(" ")
+            cleaned_line_list = []
+            for char in rstripped_line:
+                if char <= "\x7f":
+                    cleaned_line_list.append(char)
+                else:
+                    logging.warning(f'Cleaned {char} from {rstripped_line}')
+            # TODO here. Does not work
+            self._input_file_array[array_index] = str(cleaned_line_list)
+            array_index += 1
+        logging.debug('Cleaning done')
+
     def _parse_one_line(self, line: str):
-        rstripped_line = line.rstrip("\n").rstrip(
-            '\r').rstrip(" ")
-        splitted_line = rstripped_line.split(' ', 1)
-        if len(splitted_line) != 2 or rstripped_line != f"{splitted_line[0]} {splitted_line[1]}":
+        splitted_line = line.split(' ', 1)
+        if len(splitted_line) != 2 or line != f"{splitted_line[0]} {splitted_line[1]}":
             logging.warning(f"Could not parse line {line}")
             return [-1, ""]
         cast_splitted_line = [int(splitted_line[0]), splitted_line[1]]
@@ -81,17 +96,23 @@ class GedcomParser():
         logging.error("VERS not in file")
         return ReturnCode.ERR_VERS_NOT_IN_FILE.value
 
+    def _append_data_in_json(self, line_list: list, output_dict: dict):
+        pass
+
     def check_file(self):
+        return_code = self._clean_not_utf_chars()
+        if return_code:
+            return return_code
         return_code = self._verify_version_in_file()
         if return_code:
             return return_code
         return ReturnCode.ERR_OK.value
 
     def parse(self):
+        output_dict = {}
         for raw_line in self._input_file_array:
             line_list = self._parse_one_line(raw_line)
-
-            pass
+            self._append_data_in_json(line_list, output_dict)
         return ReturnCode.ERR_OK.value
 
 
